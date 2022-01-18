@@ -8,4 +8,8 @@ This demo is intended to be run on a system with Portworx Enterprise installed o
 
 To Run: run `./rundemo.sh`. You must hit `return` to make it step through the demo. 
 
-To cleanup: run `cleanup.sh`. Note, this is DESTRUCTIVE to everything in the namespace defined in `rundemo.sh`! I might make this safer later.
+To cleanup: run `cleanup.sh`. Note, this is DESTRUCTIVE to everything in the namespace defined in `rundemo.sh` I might make this safer later.
+
+Set DEMO_AUTO_RUN to not require hitting `ENTER` to step through the demo.
+Set DEMO_RUN_FAST to run it at a faster pace. 
+See `util.sh` for how these are used. 
