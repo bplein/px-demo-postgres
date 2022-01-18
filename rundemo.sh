@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
 clear 
-
+if ! type "pv" > /dev/null; then
+  echo ""
+  echo "This demo requires pv (pipe viewer), please install via your package manager"
+  exit
+fi
 source ./util.sh
 
 export namespace=postgres-demo
