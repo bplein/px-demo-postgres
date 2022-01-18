@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
    name: px-postgres-pvc
 spec:
-   storageClassName: px-repl3-sc
+   storageClassName: px-repl3-sc-demotemp
    accessModes:
      - ReadWriteOnce
    resources:
