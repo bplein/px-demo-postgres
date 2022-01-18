@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 clear 
 
 source ./util.sh
@@ -42,8 +44,10 @@ clear
 desc ""
 desc "Now we'll run a Portworx command to see what the Portworx cluster reveals about the volume"
 desc "The syntax for this command is pxctl volume inspect VOL."
-export VOL=`kubectl get pvc | grep px-postgres-pvc | awk '{print $3}'`
-export PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
+VOL=$(kubectl get pvc | grep px-postgres-pvc | awk '{print $3}')
+export VOL
+PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
+export PX_POD
 echo "$green pxctl volume list $VOL $reset"
 
 kubectl exec -i $PX_POD -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect ${VOL}
@@ -52,7 +56,8 @@ run ""
 desc ""
 desc "We are going to exec into the Postgres pod and run a command to populate data, and then get the count"
 run "kubectl get pods -l app=postgres"
-export POD=`kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+export POD
 desc "Our pod is called $POD"
 desc ""
 desc "Create the database"
@@ -78,11 +83,11 @@ EOF"
 desc ""
 desc "Now that we have 5,000,000 records in our running database, let's simulate a node failure"
 desc "We will cordon the Kubernetes node, and kill the application, which will have to start on another node"
-export NODE=`kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}'`
+export NODE=$(kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
 run "kubectl get pods -l app=postgres -o wide"
 run "kubectl cordon ${NODE}"
 
-POD=`kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $1}')
 run "kubectl delete pod ${POD}"
 watch kubectl get pods -l app=postgres -o wide
 
@@ -107,7 +112,8 @@ run "kubectl get pods -l app=postgres"
 desc ""
 desc "Let's get the count from the database table"
 
-export POD=`kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+export POD
 run "kubectl exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
@@ -152,7 +158,8 @@ desc "Let's get the count from the table"
 desc ""
 desc "Let's get the count from the database table"
 
-export POD=`kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+export POD
 run "kubectl exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
@@ -178,7 +185,8 @@ desc "Now we're going to go ahead and do something stupid because we're here to 
 desc ""
 
 run "kubectl get pods -l app=postgres"
-export POD=`kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+export POD
 run "kubectl exec -i $POD -- psql << EOF
 drop database pxdemo;
 \l
@@ -211,7 +219,8 @@ desc "Finally, let's validate that we have our data, again!"
 desc ""
 desc "Let's get the count from the database table"
 
-export POD=`kubectl get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}'`
+POD=$(kubectl get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}')
+export POD
 run "kubectl exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
