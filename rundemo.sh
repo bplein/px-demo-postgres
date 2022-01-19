@@ -182,7 +182,7 @@ desc "Take an adhoc snapshot from kubectl:"
 
 run "cat px-snap.yaml"
 run "kubectl create -f px-snap.yaml"
-run "kubectl get volumesnapshot,volumesnapshotdatas"
+run "kubectl get volumesnapshots.volumesnapshot,volumesnapshotdatas"
 
 desc ""
 desc "Now we're going to go ahead and do something stupid because we're here to learn."
