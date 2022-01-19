@@ -54,7 +54,7 @@ PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].m
 export PX_POD
 echo "$green pxctl volume list $VOL $reset"
 
-kubectl exec -i $PX_POD -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect ${VOL}
+kubectl exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect "${VOL}"
 
 run ""
 desc ""
