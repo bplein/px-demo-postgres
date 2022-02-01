@@ -47,8 +47,8 @@ spec:
           value: /var/lib/postgresql/data/pgdata
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
-          name: postgredb
+          name: postgresdb
       volumes:
-      - name: postgredb
+      - name: postgresdb
         persistentVolumeClaim:
           claimName: px-postgres-snap-clone
