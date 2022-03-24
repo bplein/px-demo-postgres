@@ -10,4 +10,4 @@ spec:
   storageClassName: stork-snapshot-sc
   resources:
     requests:
-      storage: 2Gi
+      storage: 10Gi

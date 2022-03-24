@@ -11,10 +11,7 @@ source ./util.sh
 export namespace=postgres-demo
 desc ""
 desc "First lets create a namespace to run our application and switch context to it"
-run "kubectl create ns $namespace"
-
-
-run "kubectl config set-context --current --namespace=$namespace"
+run "kubectl create ns ${namespace}"
 
 desc ""
 desc "Let's check out the pods running portworx"
@@ -30,17 +27,17 @@ desc ""
 desc "Now create a volume for the application."
 
 run "cat px-postgres-pvc.yaml"
-run "kubectl apply -f px-postgres-pvc.yaml"
+run "kubectl -n ${namespace} apply -f px-postgres-pvc.yaml"
 
 echo -n postgres123 > password.txt
-kubectl create secret generic postgres-pass --from-file=password.txt 2>&1 >/dev/null
+kubectl -n ${namespace} create secret generic postgres-pass --from-file=password.txt 2>&1 >/dev/null
 
 
 desc ""
 desc "And now we'll take a look at the application in YAML format and deploy it (hit CTRL-C to stop watching the application when it's up)"
 run "cat postgres-app.yaml"
-run "kubectl create -f postgres-app.yaml"
-watch kubectl get pods -l app=postgres -o wide
+run "kubectl -n ${namespace} create -f postgres-app.yaml"
+watch kubectl -n ${namespace} get pods -l app=postgres -o wide
 
 #clear the screen
 clear
@@ -48,24 +45,24 @@ clear
 desc ""
 desc "Now we'll run a Portworx command to see what the Portworx cluster reveals about the volume"
 desc "The syntax for this command is pxctl volume inspect VOL."
-VOL=$(kubectl get pvc | grep px-postgres-pvc | awk '{print $3}')
+VOL=$(kubectl -n ${namespace} get pvc | grep px-postgres-pvc | awk '{print $3}')
 export VOL
-PX_POD=$(kubectl get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
+PX_POD=$(kubectl -n ${namespace} get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
 export PX_POD
 echo "$green pxctl volume list $VOL $reset"
 
-kubectl exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect "${VOL}"
+kubectl -n ${namespace} exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect "${VOL}"
 
 run ""
 desc ""
 desc "We are going to exec into the Postgres pod and run a command to populate data, and then get the count"
-run "kubectl get pods -l app=postgres"
-POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+run "kubectl -n ${namespace} get pods -l app=postgres"
+POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
 desc "Our pod is called $POD"
 desc ""
 desc "Create the database"
-run "kubectl exec -i $POD -- psql << EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql << EOF
 create database pxdemo;
 \l
 \q
@@ -73,11 +70,11 @@ EOF"
 
 desc ""
 desc "Populate the database with test data"
-run "kubectl exec -i $POD -- pgbench -i -s 50 pxdemo;"
+run "kubectl -n ${namespace} exec -i $POD -- pgbench -i -s 50 pxdemo;"
 
 desc ""
 desc "Get a count of the records"
-run "kubectl exec -i $POD -- psql pxdemo<< EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
 \q
@@ -87,13 +84,13 @@ EOF"
 desc ""
 desc "Now that we have 5,000,000 records in our running database, let's simulate a node failure"
 desc "We will cordon the Kubernetes node, and kill the application, which will have to start on another node"
-export NODE=$(kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
-run "kubectl get pods -l app=postgres -o wide"
+export NODE=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
+run "kubectl -n ${namespace} get pods -l app=postgres -o wide"
 run "kubectl cordon ${NODE}"
 
-POD=$(kubectl get pods -l app=postgres -o wide | grep -v NAME | awk '{print $1}')
-run "kubectl delete pod ${POD}"
-watch kubectl get pods -l app=postgres -o wide
+POD=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $1}')
+run "kubectl -n ${namespace} delete pod ${POD}"
+watch kubectl -n ${namespace} get pods -l app=postgres -o wide
 
 desc ""
 desc "And let's uncordon that node so apps can run there again"
@@ -108,7 +105,7 @@ desc "Within seconds, it was running again on a second replica of the data on an
 desc " "
 desc "So lets validate the data"
 desc " "
-run "kubectl get pods -l app=postgres"
+run "kubectl -n ${namespace} get pods -l app=postgres"
 
 ##########
 # get count
@@ -116,9 +113,9 @@ run "kubectl get pods -l app=postgres"
 desc ""
 desc "Let's get the count from the database table"
 
-POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
-run "kubectl exec -i $POD -- psql pxdemo<< EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
 \q
@@ -134,23 +131,23 @@ desc "We'll add more records to the database, exceeding the original 1GiB volume
 desc ""
 desc "Next we will run further database record creation until we fill up the volume"
 
-run "kubectl exec -i $POD -- pgbench -c 10 -j 2 -t 10000 pxdemo"
+run "kubectl -n ${namespace} exec -i $POD -- pgbench -c 10 -j 2 -t 10000 pxdemo"
 
 desc ""
 desc "The application crashed, citing lack of space. Let's fix that by patching the volume to a larger size, all from Kubernetes"
 run "diff px-postgres-pvc.yaml px-postgres-pvc-larger.yaml"
-run "kubectl apply -f px-postgres-pvc-larger.yaml"
+run "kubectl -n ${namespace} apply -f px-postgres-pvc-larger.yaml"
 sleep 3
-run "watch kubectl get pvc px-postgres-pvc"
+run "watch kubectl -n ${namespace} get pvc px-postgres-pvc"
 desc "And let's watch the pod come up"
-run "watch kubectl get pods"
+run "watch kubectl -n ${namespace} get pods"
 
 desc ""
 desc "What just happened? We extended the size of the volume."
 desc "Within seconds, the pod was running again with more space for data"
 desc " "
 desc "So now we can validate the data"
-run "kubectl get pods -l app=postgres"
+run "kubectl -n ${namespace} get pods -l app=postgres"
 
 desc ""
 desc "Let's get the count from the table"
@@ -162,9 +159,9 @@ desc "Let's get the count from the table"
 desc ""
 desc "Let's get the count from the database table"
 
-POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
-run "kubectl exec -i $POD -- psql pxdemo<< EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
 \q
@@ -181,17 +178,17 @@ desc ""
 desc "Take an adhoc snapshot from kubectl:"
 
 run "cat px-snap.yaml"
-run "kubectl create -f px-snap.yaml"
-run "kubectl get volumesnapshots.volumesnapshot,volumesnapshotdatas"
+run "kubectl -n ${namespace} create -f px-snap.yaml"
+run "kubectl -n ${namespace} get volumesnapshots.volumesnapshot,volumesnapshotdatas"
 
 desc ""
 desc "Now we're going to go ahead and do something stupid because we're here to learn."
 desc ""
 
-run "kubectl get pods -l app=postgres"
-POD=$(kubectl get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+run "kubectl -n ${namespace} get pods -l app=postgres"
+POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
-run "kubectl exec -i $POD -- psql << EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql << EOF
 drop database pxdemo;
 \l
 \q
@@ -205,16 +202,16 @@ desc ""
 desc "Here is the code to create the clone"
 
 run "cat px-snap-pvc.yaml"
-run "kubectl create -f px-snap-pvc.yaml"
-run "kubectl get pvc"
+run "kubectl -n ${namespace} create -f px-snap-pvc.yaml"
+run "kubectl -n ${namespace} get pvc"
 
 desc ""
 desc "Here is the postgres app pointing to that newly restored volume"
 run "cat postgres-app-restore.yaml"
-run "kubectl create -f postgres-app-restore.yaml"
+run "kubectl -n ${namespace} create -f postgres-app-restore.yaml"
 
 desc "Let's watch it come up, hit CTRL-C when it's up"
-run "watch kubectl get pods -l app=postgres-snap -o wide"
+run "watch kubectl -n ${namespace} get pods -l app=postgres-snap -o wide"
 
 desc "Finally, let's validate that we have our data, again!"
 ##########
@@ -223,9 +220,9 @@ desc "Finally, let's validate that we have our data, again!"
 desc ""
 desc "Let's get the count from the database table"
 
-POD=$(kubectl get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}')
+POD=$(kubectl -n ${namespace} get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}')
 export POD
-run "kubectl exec -i $POD -- psql pxdemo<< EOF
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 \dt
 select count(*) from pgbench_accounts;
 \q
