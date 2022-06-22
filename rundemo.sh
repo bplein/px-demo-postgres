@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 
-clear 
-if ! type "pv" > /dev/null; then
-  echo ""
-  echo "This demo requires pv (pipe viewer), please install via your package manager"
-  exit
+clear
+if ! command -v pv &> /dev/null
+then
+    echo ""
+    echo "PV could not be found, attempting to install it"
+    echo ""
+    bash ./install-pv.sh
+    echo ""
+    echo "Please run the demo again"
+    exit
 fi
 source ./util.sh
 
