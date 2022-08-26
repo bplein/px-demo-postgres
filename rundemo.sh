@@ -54,7 +54,7 @@ VOL=$(kubectl -n ${namespace} get pvc | grep px-postgres-pvc | awk '{print $3}')
 export VOL
 PX_POD=$(kubectl -n ${namespace} get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
 export PX_POD
-echo "$green pxctl volume list $VOL $reset"
+echo "$green pxctl volume inspect $VOL $reset"
 
 kubectl -n ${namespace} exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect "${VOL}"
 
