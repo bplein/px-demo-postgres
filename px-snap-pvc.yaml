@@ -2,12 +2,14 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: px-postgres-snap-clone
-  annotations:
-    snapshot.alpha.kubernetes.io/snapshot: px-postgres-snapshot
 spec:
+  storageClassName: px-repl3-sc-demotemp
+  dataSource:
+    name: px-postgres-snapshota
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
   accessModes:
-     - ReadWriteOnce
-  storageClassName: stork-snapshot-sc
+    - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
