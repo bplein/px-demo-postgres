@@ -180,11 +180,16 @@ clear
 desc ""
 desc "Now let's simulate data loss due to human error, with recovery from a snapshot"
 desc ""
+desc "First lets create a snapshot class as required by Kubernetes."
+run "cat px-snapclass.yaml"
+run "kubectl -n ${namespace} create -f px-snapclass.yaml"
+desc ""
 desc "Take an adhoc snapshot from kubectl:"
 
+desc "First lets create a snapshot class as required by Kubernetes."
 run "cat px-snap.yaml"
 run "kubectl -n ${namespace} create -f px-snap.yaml"
-run "kubectl -n ${namespace} get volumesnapshots.volumesnapshot,volumesnapshotdatas"
+run "kubectl -n ${namespace} get VolumeSnapshot,VolumeSnapshotContents"
 
 desc ""
 desc "Now we're going to go ahead and do something stupid because we're here to learn."

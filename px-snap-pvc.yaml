@@ -5,7 +5,7 @@ metadata:
 spec:
   storageClassName: px-repl3-sc-demotemp
   dataSource:
-    name: px-postgres-snapshota
+    name: px-postgres-snapshot
     kind: VolumeSnapshot
     apiGroup: snapshot.storage.k8s.io
   accessModes:
