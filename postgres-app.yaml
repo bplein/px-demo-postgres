@@ -35,7 +35,13 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
           name: postgresdb
+        - mountPath: /dump
+          name: visitorlog
       volumes:
       - name: postgresdb
         persistentVolumeClaim:
           claimName: px-postgres-pvc
+      - name: config-volume
+        configMap:
+        name: visitorlog
+

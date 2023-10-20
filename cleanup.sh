@@ -9,3 +9,4 @@ read -p "Hit CTRL-C to escape, press ENTER to continue... " -n1
 
 kubectl delete ns $namespace
 kubectl delete sc px-repl3-sc-demotemp
+kubectl delete volumeSnapshotClass px-csi-snapclass-demotemp
