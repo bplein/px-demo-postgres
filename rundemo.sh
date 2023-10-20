@@ -12,7 +12,14 @@ then
     exit
 fi
 source ./util.sh
-
+desc "Let's get a little bit of data to put into the system"
+desc "What is your first name?"
+read firstname
+desc "What is your favorite color?"
+read favoritecolor
+desc "What is your favorite sport?"
+read favoritesport
+desc "Thank you! Not lets get started!\n\n"
 export namespace=postgres-demo
 desc ""
 desc "First lets create a namespace to run our application and switch context to it"
@@ -60,7 +67,7 @@ kubectl -n ${namespace} exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bi
 
 run ""
 desc ""
-desc "We are going to exec into the Postgres pod and run a command to populate data, and then get the count"
+desc "We are going to exec into the Postgres pod and run a command to populate data, and then query the data"
 run "kubectl -n ${namespace} get pods -l app=postgres"
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
@@ -75,26 +82,33 @@ EOF"
 
 desc ""
 desc "Populate the database with test data"
-run "kubectl -n ${namespace} exec -i $POD -- pgbench -i -s 50 pxdemo;"
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
+CREATE TABLE visitor_log (firstname text, favoritecolor text, favoritesport text, created_at timestamptz DEFAULT Now());
+INSERT INTO visitor_log (firstname, favoritecolor, favoritesport) VALUES ('${firstname}', '${favoritecolor}', '${favoritesport}');
+\q
+EOF"
+kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
+COPY visitor_log TO '/var/lib/postgresql/data/pgdata/visitor_log.csv' DELIMITER ',' CSV HEADER;
+EOF
+kubectl -n ${namespace}-- cp $POD:/var/lib/postgresql/data/pgdata/visitor_log.csv ./visitor_log.csv
 
 desc ""
-desc "Get a count of the records"
+desc "Query the table to see our new record"
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
-\dt
-select count(*) from pgbench_accounts;
+SELECT * from visitor_log;
 \q
 EOF"
 
 
 desc ""
-desc "Now that we have 5,000,000 records in our running database, let's simulate a node failure"
+desc "Now that we have your data in the database, lets simulate a node failucre"
 desc "We will cordon the Kubernetes node, and kill the application, which will have to start on another node"
 export NODE=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
 run "kubectl -n ${namespace} get pods -l app=postgres -o wide"
 run "kubectl cordon ${NODE}"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $1}')
-run "kubectl -n ${namespace} delete pod ${POD}"
+run "kubectl -n ${namespace} delete pod ${POD} --grace-period=0 --force"
 watch kubectl -n ${namespace} get pods -l app=postgres -o wide
 
 desc ""
@@ -105,7 +119,7 @@ run "kubectl uncordon ${NODE}"
 clear
 
 desc ""
-desc "What just happened? We created a database, added 5 million records to it, and simulated a node failure"
+desc "What just happened? We created a database, add your data to it, and simulated a node failure"
 desc "Within seconds, it was running again on a second replica of the data on another node"
 desc " "
 desc "So lets validate the data"
@@ -113,16 +127,15 @@ desc " "
 run "kubectl -n ${namespace} get pods -l app=postgres"
 
 ##########
-# get count
+# get data
 ##########
 desc ""
-desc "Let's get the count from the database table"
+desc "Let's query from the database table"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
-\dt
-select count(*) from pgbench_accounts;
+SELECT * from visitor_log;
 \q
 EOF"
 ##########
@@ -132,10 +145,20 @@ clear
 
 desc ""
 desc "Now let's simulate an app failure due to lack of disk space"
-desc "We'll add more records to the database, exceeding the original 1GiB volume capacity"
+desc "We'll add a new table with 5 million records to the database."
 desc ""
-desc "Next we will run further database record creation until we fill up the volume"
+desc "After we will run further database record creation until we fill up the volume"
 
+desc "Populate the database with 5M rows of data"
+run "kubectl -n ${namespace} exec -i $POD -- pgbench -i -s 50 pxdemo;"
+
+desc ""
+desc "Get a count of the records"
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
+select count(*) from pgbench_accounts;
+\q
+EOF"
+desc "Attempt to populate the database with 10M rows of data"
 run "kubectl -n ${namespace} exec -i $POD -- pgbench -c 10 -j 2 -t 10000 pxdemo"
 
 desc ""
@@ -155,8 +178,6 @@ desc "So now we can validate the data"
 run "kubectl -n ${namespace} get pods -l app=postgres"
 
 desc ""
-desc "Let's get the count from the table"
-
 
 ##########
 # get count
@@ -167,8 +188,22 @@ desc "Let's get the count from the database table"
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
 export POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
-\dt
 select count(*) from pgbench_accounts;
+\q
+EOF"
+##########
+
+
+##########
+# get data
+##########
+desc ""
+desc "Let's query from the database visitor_logs table"
+
+POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
+export POD
+run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
+SELECT * from visitor_log;
 \q
 EOF"
 ##########
@@ -233,8 +268,8 @@ desc "Let's get the count from the database table"
 POD=$(kubectl -n ${namespace} get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}')
 export POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
-\dt
 select count(*) from pgbench_accounts;
+SELECT * from visitor_log;
 \q
 EOF"
 ##########
