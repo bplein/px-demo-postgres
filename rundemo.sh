@@ -20,7 +20,7 @@ read favoritecolor
 desc "What is your favorite sport?"
 read favoritesport
 desc "Thank you! Not lets get started!\n\n"
-export namespace=postgres-demo
+namespace=postgres-demo
 desc ""
 desc "First lets create a namespace to run our application and switch context to it"
 run "kubectl create ns ${namespace}"
@@ -58,9 +58,9 @@ desc ""
 desc "Now we'll run a Portworx command to see what the Portworx cluster reveals about the volume"
 desc "The syntax for this command is pxctl volume inspect VOL."
 VOL=$(kubectl -n ${namespace} get pvc | grep px-postgres-pvc | awk '{print $3}')
-export VOL
+#VOL
 PX_POD=$(kubectl -n ${namespace} get pods -l name=portworx -n portworx -o jsonpath='{.items[0].metadata.name}')
-export PX_POD
+#PX_POD
 echo "$green pxctl volume inspect $VOL $reset"
 
 kubectl -n ${namespace} exec -i "$PX_POD" -n portworx -c portworx -- /opt/pwx/bin/pxctl volume inspect "${VOL}"
@@ -70,7 +70,7 @@ desc ""
 desc "We are going to exec into the Postgres pod and run a command to populate data, and then query the data"
 run "kubectl -n ${namespace} get pods -l app=postgres"
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 desc "Our pod is called $POD"
 desc ""
 desc "Create the database"
@@ -87,10 +87,6 @@ CREATE TABLE visitor_log (firstname text, favoritecolor text, favoritesport text
 INSERT INTO visitor_log (firstname, favoritecolor, favoritesport) VALUES ('${firstname}', '${favoritecolor}', '${favoritesport}');
 \q
 EOF"
-kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
-COPY visitor_log TO '/var/lib/postgresql/data/pgdata/visitor_log.csv' DELIMITER ',' CSV HEADER;
-EOF
-kubectl -n ${namespace}-- cp $POD:/var/lib/postgresql/data/pgdata/visitor_log.csv ./visitor_log.csv
 
 desc ""
 desc "Query the table to see our new record"
@@ -99,11 +95,10 @@ SELECT * from visitor_log;
 \q
 EOF"
 
-
 desc ""
 desc "Now that we have your data in the database, lets simulate a node failucre"
 desc "We will cordon the Kubernetes node, and kill the application, which will have to start on another node"
-export NODE=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
+NODE=$(kubectl -n ${namespace} get pods -l app=postgres -o wide | grep -v NAME | awk '{print $7}')
 run "kubectl -n ${namespace} get pods -l app=postgres -o wide"
 run "kubectl cordon ${NODE}"
 
@@ -133,7 +128,7 @@ desc ""
 desc "Let's query from the database table"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 SELECT * from visitor_log;
 \q
@@ -186,7 +181,7 @@ desc ""
 desc "Let's get the count from the database table"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 select count(*) from pgbench_accounts;
 \q
@@ -201,7 +196,7 @@ desc ""
 desc "Let's query from the database visitor_logs table"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 SELECT * from visitor_log;
 \q
@@ -232,7 +227,7 @@ desc ""
 
 run "kubectl -n ${namespace} get pods -l app=postgres"
 POD=$(kubectl -n ${namespace} get pods -l app=postgres | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 run "kubectl -n ${namespace} exec -i $POD -- psql << EOF
 drop database pxdemo;
 \l
@@ -266,7 +261,7 @@ desc ""
 desc "Let's get the count from the database table"
 
 POD=$(kubectl -n ${namespace} get pods -l app=postgres-snap | grep Running | grep 1/1 | awk '{print $1}')
-export POD
+#POD
 run "kubectl -n ${namespace} exec -i $POD -- psql pxdemo<< EOF
 select count(*) from pgbench_accounts;
 SELECT * from visitor_log;
